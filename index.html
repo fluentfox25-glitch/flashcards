@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Flashcards: physics and words</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f1;--surface:#fff;--ink:#14213d;--muted:#5b6b7f;--accent:#e8a317;--on-accent:#14213d;--ok:#1f8a5b;--no:#c2410c;--line:#cfd9d6;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a24;--surface:#18273a;--ink:#e8eef5;--muted:#9db0c4;--accent:#f0b429;--on-accent:#14213d;--ok:#4cc38a;--no:#f08a5d;--line:#2a3b50;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1a24;--surface:#18273a;--ink:#e8eef5;--muted:#9db0c4;--accent:#f0b429;--on-accent:#14213d;--ok:#4cc38a;--no:#f08a5d;--line:#2a3b50;color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+main{max-width:520px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.7rem;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0 0 18px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{font:inherit;font-weight:600;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.count{color:var(--muted);font-size:.9rem;margin-bottom:12px}
+.card{min-height:270px;width:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:26px 22px;border-radius:22px;background:var(--surface);border:2px solid var(--ink);color:var(--ink);font:inherit;cursor:pointer}
+.card.back{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.card.pop{animation:pop .22s ease-out}
+@keyframes pop{from{transform:scale(.97)}to{transform:scale(1)}}
+.side{font-size:.85rem;opacity:.7;margin-bottom:12px}
+.text{font-size:1.55rem;font-weight:800;line-height:1.25;overflow-wrap:anywhere}
+.hint{color:var(--muted);font-size:.9rem;text-align:center;margin:10px 0}
+.row{display:flex;gap:10px;margin-top:12px}
+.row button,.btn{flex:1;font:inherit;font-weight:700;font-size:1rem;padding:14px;border-radius:14px;border:0;cursor:pointer;color:#fff}
+.again{background:var(--no)}.got{background:var(--ok)}
+.btn{background:var(--ink);color:var(--bg);flex:none;width:100%;margin-top:10px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.score{font-size:3rem;font-weight:800;margin:0}
+.panel{background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:18px;text-align:center}
+details{margin-top:26px;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px}
+summary{font-weight:700;cursor:pointer}
+label{display:block;margin-top:12px;font-weight:600;font-size:.95rem}
+input,textarea{width:100%;font:inherit;margin-top:6px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.del{background:none;border:0;color:var(--no);font:inherit;cursor:pointer;padding:6px 0}
+ul{list-style:none;padding:0;margin:14px 0 0}
+li{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding:6px 0;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){.card.pop{animation:none}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Flashcards</h1>
+  <p class="sub">Tap a card to flip it. Mark what you know.</p>
+  <div class="tabs" id="tabs"></div>
+  <div id="stage"></div>
+  <details id="addbox">
+    <summary>Add your own card</summary>
+    <label for="f">Front (question or word)</label>
+    <input id="f" maxlength="120" autocomplete="off">
+    <label for="b">Back (answer or meaning)</label>
+    <textarea id="b" rows="2" maxlength="200"></textarea>
+    <button class="btn" id="addbtn" type="button">Save card</button>
+    <ul id="mylist"></ul>
+  </details>
+</main>
+<script>
+var BASE={
+physics:[
+["Newton’s second law","F = ma"],
+["Kinetic energy","KE = ½ m v²"],
+["Gravitational potential energy near Earth","U = m g h"],
+["Ohm’s law","V = I R"],
+["Speed of light in vacuum","About 3 × 10⁸ m/s"],
+["Work done by a force","W = F · d · cos θ"],
+["Linear momentum","p = m v"],
+["Centripetal acceleration","a = v² / r"],
+["SI unit of power","Watt (1 joule per second)"],
+["Escape velocity from Earth","About 11.2 km/s"]
+],
+vocab:[
+["Ephemeral","Lasting a very short time"],
+["Benevolent","Kind and generous"],
+["Ubiquitous","Found everywhere"],
+["Candid","Honest and direct"],
+["Meticulous","Very careful about details"],
+["Resilient","Able to recover quickly"],
+["Ambiguous","Open to more than one meaning"],
+["Pragmatic","Practical rather than idealistic"],
+["Eloquent","Fluent and persuasive in speech"],
+["Tenacious","Holding firmly to a goal"]
+]};
+var NAMES={physics:"Physics",vocab:"Vocabulary",mine:"My cards"};
+var custom=load(),deck="physics",queue=[],idx=0,flipped=false,missed=[],known=0;
+function load(){try{return JSON.parse(localStorage.getItem("fc-custom"))||[]}catch(e){return[]}}
+function save(){try{localStorage.setItem("fc-custom",JSON.stringify(custom))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function cardsOf(d){return d==="mine"?custom:BASE[d]}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function start(list){queue=shuffle(list);idx=0;flipped=false;missed=[];known=0;render()}
+function tabs(){
+  var h="";for(var k in NAMES){h+='<button type="button" data-d="'+k+'" aria-pressed="'+(k===deck)+'">'+NAMES[k]+'</button>'}
+  var t=document.getElementById("tabs");t.innerHTML=h;
+  t.querySelectorAll("button").forEach(function(b){b.onclick=function(){deck=b.dataset.d;tabs();start(cardsOf(deck))}});
+}
+function render(){
+  var s=document.getElementById("stage");
+  if(!queue.length){s.innerHTML='<div class="panel"><p class="text">No cards yet</p><p class="hint">Open “Add your own card” below to make your first one.</p></div>';list();return}
+  if(idx>=queue.length){
+    s.innerHTML='<div class="panel"><p class="score">'+known+' / '+queue.length+'</p><p class="hint">You knew '+known+' of '+queue.length+' cards.</p>'+
+    (missed.length?'<button class="btn" id="rm" type="button">Retry '+missed.length+' missed</button>':'')+
+    '<button class="btn alt" id="ra" type="button">Restart deck</button></div>';
+    var rm=document.getElementById("rm");if(rm)rm.onclick=function(){start(missed)};
+    document.getElementById("ra").onclick=function(){start(cardsOf(deck))};list();return}
+  var c=queue[idx],pct=Math.round(idx/queue.length*100);
+  s.innerHTML='<div class="bar"><i style="width:'+pct+'%"></i></div><div class="count">Card '+(idx+1)+' of '+queue.length+'</div>'+
+  '<button type="button" class="card pop'+(flipped?' back':'')+'" id="card" aria-live="polite"><span class="side">'+(flipped?'Answer':'Question')+'</span><span class="text">'+esc(flipped?c[1]:c[0])+'</span></button>'+
+  (flipped?'<div class="row"><button type="button" class="again" id="no">Again</button><button type="button" class="got" id="yes">Got it</button></div>':'<p class="hint">Tap the card to see the answer</p>');
+  document.getElementById("card").onclick=function(){flipped=!flipped;render()};
+  if(flipped){document.getElementById("no").onclick=function(){missed.push(c);next()};document.getElementById("yes").onclick=function(){known++;next()}}
+  list();
+}
+function next(){idx++;flipped=false;render()}
+function list(){
+  var u=document.getElementById("mylist");
+  u.innerHTML=custom.map(function(c,i){return'<li><span>'+esc(c[0])+'</span><button class="del" type="button" data-i="'+i+'">Delete</button></li>'}).join("");
+  u.querySelectorAll(".del").forEach(function(b){b.onclick=function(){custom.splice(+b.dataset.i,1);save();if(deck==="mine")start(custom);else list()}});
+}
+document.getElementById("addbtn").onclick=function(){
+  var f=document.getElementById("f"),b=document.getElementById("b");
+  if(!f.value.trim()||!b.value.trim()){f.focus();return}
+  custom.push([f.value.trim(),b.value.trim()]);save();f.value="";b.value="";
+  deck="mine";tabs();start(custom);
+};
+tabs();start(cardsOf(deck));
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
